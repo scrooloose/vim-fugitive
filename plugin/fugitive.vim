@@ -2291,5 +2291,41 @@ function! fugitive#statusline(...)
 endfunction
 
 " }}}1
+" Folding {{{1
+
+function! fugitive#foldtext()
+  if getline(v:foldstart) !~# '^diff --git ' || &foldmethod !=# 'syntax'
+    return foldtext()
+  endif
+  let [add, remove] = [-1, -1]
+  let filename = ''
+  for lnum in range(v:foldstart,v:foldend)
+    if filename ==# '' && getline(lnum) =~# '^[+-]\{3\} [ab]/'
+      let filename = getline(lnum)[6:-1]
+    endif
+    if getline(lnum) =~# '^+'
+      let add += 1
+    elseif getline(lnum) =~# '^-'
+      let remove += 1
+    elseif getline(lnum) =~# '^Binary '
+      let binary = 1
+    endif
+  endfor
+  if filename ==# ''
+    let filename = matchstr(getline(v:foldstart),'^diff .\{-\} a/\zs.*\ze b/')
+  endif
+  if exists('binary')
+    return 'Binary: '.filename
+  else
+    return '+'.add.' -'.remove.': '.filename
+  endif
+endfunction
+
+augroup fugitive_foldtext
+  autocmd!
+  autocmd User Fugitive if &filetype =~# '^git\%(commit\)\=$' | set foldtext=fugitive#foldtext() | endif
+augroup END
+
+" }}}1
 
 " vim:set ft=vim ts=8 sw=2 sts=2:
